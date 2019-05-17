@@ -7,15 +7,18 @@ import simplejson
 import urllib
 from polyline.codec import PolylineCodec
 
-def read_all_data():
-    trip_data = []
-    for fname in glob.glob('data/*.csv'):
-        trip_data.append(pd.read_csv(fname))
-    return pd.concat(trip_data, axis=0)
 
-
-def read_data(fname):
-    return pd.read_csv(fname)
+def read_data(read_all=True, fname=None):
+    '''
+    Read in data to pandas dataframe
+    '''
+    if fname is not None:
+        return pd.read_csv(fname)
+    if read_all:
+        trip_data = []
+        for fname in glob.glob('data/*.csv'):
+            trip_data.append(pd.read_csv(fname))
+        return pd.concat(trip_data, axis=0)
 
 
 def get_path(polyline):
@@ -31,7 +34,7 @@ def get_path(polyline):
 def get_polyline(orig, dest):
     '''
     Obtain path polyline from origin, destination (lat, lon)
-    tuple.
+    tuple, using google maps directions api.
     '''
     orig_lat, orig_lon = orig[0], orig[1]
     dest_lat, dest_lon = dest[0], dest[1]
@@ -41,27 +44,20 @@ def get_polyline(orig, dest):
     return polyline
 
 
-def floor_time(tm):
-    return tm - datetime.timedelta(minutes=tm.minute % 10,
+def floor_time_to_min(tm, min):
+    '''
+    Convenience function for flooring datetime to nearest min minutes
+    '''
+    return tm - datetime.timedelta(minutes=tm.minute % min,
                                    seconds=tm.second,
                                    microseconds=tm.microsecond)
 
 if __name__ == "__main__":
-    trip_df = read_all_data()
+    trip_df = read_data()
     # trip_df = read_data('data/201904-fordgobike-tripdata.csv')
-    trip_df['start_time'] = pd.to_datetime(trip_df['start_time'])
-    trip_df['end_time'] = pd.to_datetime(trip_df['end_time'])
-    trip_df['hour'] = trip_df.start_time.dt.hour
-    trip_df['minute'] = trip_df.start_time.dt.minute
-    trip_df['day'] = trip_df.start_time.dt.dayofweek
-    trip_df['dayoftravel'] = trip_df.start_time.dt.floor('d')
-    trip_df['month'] = trip_df.start_time.dt.month
-    trip_df['dayofyear'] = trip_df.start_time.dt.dayofyear
-    trip_df['dayofmonth'] = trip_df.start_time.dt.day
-    trip_df['year'] = trip_df.start_time.dt.year
-    trip_df['hourminuteoftravel'] = trip_df['start_time'].map(floor_time).dt.time
-
-    idx = (trip_df.start_station_longitude > -122.528114) & (trip_df.start_station_longitude < -122.343407) & \
-        (trip_df.start_station_latitude > 37.705825) & (trip_df.start_station_latitude < 37.815209)
+    idx = (trip_df.start_station_longitude > -122.528114) & \
+          (trip_df.start_station_longitude < -122.343407) & \
+          (trip_df.start_station_latitude > 37.705825) & \
+          (trip_df.start_station_latitude < 37.815209)
     trip_df = trip_df[idx]
     trip_df.to_csv('data/fordgobike-tripdata.csv')
